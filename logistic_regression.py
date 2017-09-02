@@ -1,9 +1,11 @@
-import sys, os
-import numpy as np
+import numbers
+import sys
+
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
 DATA_FILES_PATH = "bank/"
+
 
 # =======================
 #     MENUS FUNCTIONS
@@ -14,10 +16,10 @@ def show_menu():
     print("Please choose the menu you want to start:")
     print("1. Run Logistic Regression")
     print("2. Exit")
-    #choice = input(" >>  ")
-    #exec_menu(choice)
-    exec_menu("1")
+    choice = input(" >>  ")
+    exec_menu(choice)
     return
+
 
 # Execute menu
 def exec_menu(choice):
@@ -29,22 +31,25 @@ def exec_menu(choice):
         show_menu()
     return
 
+
 # Exit program
 def exit():
     sys.exit()
 
-def load_data_from_csv_file(file_name, sep = ';'):
+
+def load_data_from_csv_file(file_name, sep=';'):
     # return np.genfromtxt(os.path.join(DATA_FILES_PATH,file_name), delimiter=',', dtype=int)
     return pd.read_csv(DATA_FILES_PATH + file_name, sep=sep)
+
 
 def menu_run_logistic():
     print("menu_run_logistic")
     # get data from CSV
     x_df = load_data_from_csv_file("bank.csv")
 
-    x_df, y_df = prepare_data(x_df)
+    x_df, y_df = make_dummies(x_df)
 
-    length_of_train = round(len(x_df.index)*0.8)
+    length_of_train = round(len(x_df.index) * 0.8)
 
     x_train, y_train = x_df[:length_of_train], y_df[:length_of_train]
     x_test, y_test = x_df[length_of_train:], y_df[length_of_train:]
@@ -67,37 +72,38 @@ def menu_run_logistic():
     #
     # print("score: " + str(score))
 
+# This function will automatically convert Categories to dummies based on the fact that they contain string on the
+# first value of the column. And will convert yes\no fields to 1\0 if the first column will contain values of 'yes'\'no'
+# The function will also split y values to separate df
+def make_dummies(df):
 
-def prepare_data(x_df):
+    dummies_list = []
+    dummies_names = []
     # replace yes/no with boolean
     str_to_boolean = {'yes': 1, 'no': 0}
-    x_df['housing'] = x_df['housing'].map(str_to_boolean)
-    x_df['loan'] = x_df['loan'].map(str_to_boolean)
-    x_df['default'] = x_df['default'].map(str_to_boolean)
-    x_df['y'] = x_df['y'].map(str_to_boolean)
+
+    for column, values in df.iteritems():
+
+        if values[0] in str_to_boolean.keys():
+            df[column] = df[column].map(str_to_boolean)
+
+        elif not isinstance(values[0], numbers.Number):
+            # make dummies out of textual column and Convert to int32
+            dummies_list.append(pd.get_dummies(df[column], prefix=column).astype(dtype='int32'))
+            dummies_names.append(column)
+
     # split y out of the DataFrame
-    y_df = x_df['y']
-    print(x_df)
-    # make dummies out of textual column
-    dummy1 = pd.get_dummies(x_df['marital'], prefix='marital')
-    dummy2 = pd.get_dummies(x_df['job'], prefix='job')
-    dummy3 = pd.get_dummies(x_df['education'], prefix='education')
-    dummy4 = pd.get_dummies(x_df['contact'], prefix='contact')
-    dummy5 = pd.get_dummies(x_df['month'], prefix='month')
-    dummy6 = pd.get_dummies(x_df['poutcome'], prefix='poutcome')
-    # Convert to int
-    dummy1 = dummy1.astype(dtype='int32')
-    dummy2 = dummy2.astype(dtype='int32')
-    dummy3 = dummy3.astype(dtype='int32')
-    dummy4 = dummy4.astype(dtype='int32')
-    dummy5 = dummy5.astype(dtype='int32')
-    dummy6 = dummy6.astype(dtype='int32')
-    dummies_list = [dummy1, dummy2, dummy3, dummy4, dummy5, dummy6]
-    # remove column from original df
-    x_df = x_df.drop(['marital', 'job', 'education', 'contact', 'month', 'poutcome', 'y'], 1)
+    y_df = df['y']
+    # remove y from df
+    dummies_names.append('y')
+
+    # # remove column from original df
+    df = df.drop(dummies_names, 1)
     # Join both parts
-    x_df = x_df.join(dummies_list)
-    return x_df, y_df
+    df = df.join(dummies_list)
+
+    print(df)
+    return df, y_df
 
 
 # =======================
@@ -117,4 +123,5 @@ menu_actions = {
 
 if __name__ == '__main__':
     # Launch main menu
-    show_menu()
+    # show_menu()
+    menu_run_logistic()
